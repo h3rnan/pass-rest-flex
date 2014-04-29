@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" verticalAlign="middle" width="370" height="80"
+				applicationComplete="stage.scaleMode = StageScaleMode.EXACT_FIT;init();">
+	<mx:Script>
+		<![CDATA[
+			import com.maccherone.json.JSON;
+			
+			import flash.external.ExternalInterface;
+			
+			import mx.controls.Alert;
+			import mx.controls.PopUpButton;
+			import mx.controls.ProgressBar;
+			import mx.controls.ProgressBarMode;
+			import mx.effects.Fade;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			private var pass:String; 
+			private var namess:String; 
+			private var progBar:ProgressBar;
+			
+			private function init():void {
+				ExternalInterface.addCallback('getServiceInvoke', serviceInvoke);
+			}
+			
+ 			private function serviceInvoke(pUrl:Object, pPass:Object, pNamess:Object):void {
+				showBusyBar();
+				pass = pPass.toString();
+				namess = pNamess.toString();
+				screeningsService.url = pUrl.toString();
+				screeningsService.send();
+			}
+
+			private function validateRest(event:ResultEvent):void {
+				PopUpManager.removePopUp(progBar);
+				var rawData:String = String(event.result);
+				var rawResult:Object = JSON.decode(rawData,true);
+				var code:String = String(rawResult.codigo);
+				if (code == '1') {
+					msgHead.text = namess + ' su clave es:';
+
+					taResult.setStyle('fontSize', 28);
+					taResult.setStyle('fontWeight', 'bold');
+					taResult.text = pass;
+				} else if (code == '0'){
+					msgHead.text = '';
+					
+					taResult.setStyle('fontSize', 12);
+					taResult.setStyle('fontWeight', 'normal');
+					taResult.text = 'Lo sentimos, pero la clave ya ha sido visualizada una vez.\n' + 
+									'Si no la recuerdas debes solicitarla nuevamente.';
+				} else {
+					failMessage();
+				}
+				ExternalInterface.call('hiddenButton');
+			}
+			
+			private function resultFailed(event:FaultEvent):void {
+				PopUpManager.removePopUp(progBar);
+				failMessage();
+				ExternalInterface.call('hiddenButton');
+			}
+			
+			private function failMessage():void {
+				msgHead.text = 'Estimado cliente.';
+
+				taResult.setStyle('fontSize', 12);
+				taResult.setStyle('fontWeight', 'normal');
+				taResult.text = 'No se ha podido validar su solicitud.\n'+
+								'Por favor, intente mas tarde o llame al 600 390 6200.';
+			}
+			
+			private function showBusyBar():void {
+				if(progBar == null) {
+					progBar = new ProgressBar();
+					progBar.width = 260;
+					progBar.height = 15;
+					progBar.indeterminate = true;
+					progBar.labelPlacement = 'center';
+					progBar.setStyle('removedEffect', new Fade);
+					progBar.setStyle('addedEffect', new Fade);
+					progBar.setStyle('textAlign', 'center');
+					progBar.setStyle('color', 0x555555);
+					progBar.setStyle('borderColor', 0x000000);
+					progBar.setStyle('barColor', 0x008441);
+					progBar.label = 'Procesando...';
+					progBar.mode = ProgressBarMode.MANUAL;
+				}
+				PopUpManager.addPopUp(progBar,this,true);
+				PopUpManager.centerPopUp(progBar);
+				progBar.setProgress(0, 0);
+			}
+
+		]]>
+	</mx:Script>
+	<mx:HTTPService id="screeningsService" resultFormat="text"
+					useProxy="false" method="GET" 
+					result="validateRest(event)" 
+					fault="resultFailed(event)" />
+	<mx:VBox id="content" width="100%" height="100%" backgroundColor="#ffffff">
+		<mx:Text id="msgHead" width="100%" height="10%" color="#555555" 
+				 textAlign="center" fontSize="12" fontWeight="normal" selectable="false" />
+		<mx:TextArea id="taResult" width="100%" height="90%" borderColor="#ffffff" 
+					 color="#555555" disabledColor="#555555" backgroundDisabledColor="#ffffff" 
+					 textAlign="center" selectable="false" enabled="false" />
+	</mx:VBox>
+</mx:Application>
